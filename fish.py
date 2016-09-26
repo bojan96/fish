@@ -28,6 +28,8 @@ class Interpreter:
         self.codeboxW = len(codebox[0])
         self.stringMode = False
         self.endExec = False
+        self.stringQuote = False
+        self.stringDbQuote = False
         self.fp = open("input.txt")
         
 
@@ -71,8 +73,8 @@ class Interpreter:
             "=": self.OPequals,
             ")": self.OPgreater,
             "(": self.OPless,
-            "'": self.OPstringMode,
-            "\"": self.OPstringMode,
+            "'": self.OPstringQuote,
+            "\"": self.OPstringDbQuote,
             ":": self.OPduplicateVal,
             "~": self.OPremoveVal,
             "$": self.OPswapVal,
@@ -164,7 +166,6 @@ class Interpreter:
         if self.directionY:
             self.directionY = -self.directionY
         
-
     def OPmirrorHash(self):
 
         self.directionY = -self.directionY
@@ -194,14 +195,12 @@ class Interpreter:
         else:
             self.pushStack(ord(val) - 87)
 
-        
     def OPadd(self):
 
         a = self.popStack()
         b = self.popStack()
 
         self.pushStack(a + b)
-        
 
     def OPsub(self):
 
@@ -209,8 +208,6 @@ class Interpreter:
         b = self.popStack()
 
         self.pushStack(b - a)
-        
-        
 
     def OPmul(self):
 
@@ -219,7 +216,6 @@ class Interpreter:
 
         self.pushStack(a * b)
         
-
     def OPdiv(self):
 
         a = self.popStack()
@@ -268,10 +264,14 @@ class Interpreter:
         self.pushStack(int(b < a))
         
 
-    def OPstringMode(self):
+    def OPstringQuote(self):
 
-        self.stringMode = not self.stringMode
+        self.stringQuote = not self.stringQuote
 
+    def OPstringDbQuote(self):
+
+        self.stringDbQuote = not self.stringDbQuote
+    
     def OPduplicateVal(self):
 
         try:
@@ -452,16 +452,20 @@ class Interpreter:
         
         while (not self.endExec):
 
-            if self.stringMode and (not self.isQuote()):
-                self.pushStack(ord(self.codebox[self.ipY][self.ipX]))
 
+            element = self.codebox[self.ipY][self.ipX]
+            
+            if (self.stringQuote and element != "'") or (self.stringDbQuote and element != "\""):
+
+                self.pushStack(ord(element))
+            
             else:
 
-                self.dbgPrintInstr()
-                nextInstruction = self.instructionTable.get(self.codebox[self.ipY][self.ipX], self.InvalidInstruction)
+                #self.dbgPrintInstr()
+                nextInstruction = self.instructionTable.get(element, self.InvalidInstruction)
                 nextInstruction()
 
-            self.dbgPrintStack()
+            #self.dbgPrintStack()
             self.updateIP()
             
             
