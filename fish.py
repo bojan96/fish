@@ -16,7 +16,7 @@ class StackRegPair:
 class Interpreter:
 
 
-    def __init__(self,codebox):
+    def __init__(self,codebox,initialStack):
         
         self.directionY = 0
         self.directionX = 1
@@ -30,9 +30,10 @@ class Interpreter:
         self.endExec = False
         self.stringQuote = False
         self.stringDbQuote = False
-        self.fp = open("input.txt")
+        self.instrCount = 0
+        self.outsideCodebox = {}
+        self.stackRegList[-1].stack = initialStack
         
-
 
         self.instructionTable = {
 
@@ -93,7 +94,7 @@ class Interpreter:
             "p": self.OPputCell,
             ";": self.OPend,
             " ": self.OPnoop,
-            #"\0": self.OPnoop
+            "\0": self.OPnoop
             
             
             }
@@ -118,7 +119,8 @@ class Interpreter:
             val = self.stackRegList[-1].stack.pop()
 
         except IndexError as err:
-            raise FishInvalidOperation() from err
+            
+            raise FishInvalidOperation from err
 
         return val
 
@@ -189,11 +191,13 @@ class Interpreter:
 
         val = self.codebox[self.ipY][self.ipX]
 
-        if val.isdigit():
-            self.pushStack(int(val))
+        if chr(val).isdigit():
+            
+            self.pushStack(int(chr(val)))
 
         else:
-            self.pushStack(ord(val) - 87)
+            
+            self.pushStack(val - 87)
 
     def OPadd(self):
 
@@ -351,6 +355,7 @@ class Interpreter:
          newStackReg = StackRegPair()
 
          for val in range(toPop):
+             
              newStackReg.stack.append(self.popStack())
 
          self.stackRegList.append(newStackReg)
@@ -358,11 +363,13 @@ class Interpreter:
     def OPremStack(self):
 
         if len(self.stackRegList) == 1:
+            
             raise FishInvalidOperation()
 
         toRemove = self.stackRegList[-1].stack
 
         for i in range(len(toRemove)):
+            
             self.stackRegList[-2].stack.append(toRemove.pop())
         
         self.stackRegList.pop()
@@ -373,29 +380,39 @@ class Interpreter:
 
     def OPprintChar(self):
 
-        print(chr(self.popStack()),end = "")
+        try:
+
+            print(chr(self.popStack()),end = "")
+
+        except TypeError as err:
+
+            raise FishInvalidOperation from err
               
     def OPreadChar(self):
 
-        ch = self.fp.read(1)
+        ch = sys.stdin.read(1)
+
+        while ch == "\n":
+            
+            ch = sys.stdin.read(1)
 
         if ch == "":
+            
             self.pushStack(-1)
-            return
 
-        if ch == "\n":
-            ch = self.fp.read(1)
+        else:
 
-
-        self.pushStack(ord(ch))
+            self.pushStack(ord(ch))
 
 
     def OPreg(self):
 
         if self.stackRegList[-1].register == None:
+            
             self.stackRegList[-1].register = self.popStack()
 
         else:
+            
             self.pushStack(self.stackRegList[-1].register)
             self.stackRegList[-1].register = None
             
@@ -404,14 +421,15 @@ class Interpreter:
         y = self.popStack()
         x = self.popStack()
 
-        if y >= self.codeboxH or x >= self.codeboxW or x < 0 or y < 0:
-            self.pushStack(0)
+        if y >= self.codeboxH or x >= self.codeboxW or y < 0 or x < 0:
 
-       #if self.codebox[y][x] == " ":
-           #self.pushStack(0)
+            key = (y,x)
 
+            self.pushStack(self.outsideCodebox.get(key,0))
+            
         else:
-            self.pushStack(ord(self.codebox[y][x]))
+            
+            self.pushStack(self.codebox[y][x])
 
     def OPputCell(self):
 
@@ -419,7 +437,14 @@ class Interpreter:
         x = self.popStack()
         val = self.popStack()
 
-        self.codebox[y][x] = chr(val)
+        if y >= self.codeboxH or x >= self.codeboxW or y < 0 or x < 0:
+
+            key = (y,x)
+            self.outsideCodebox[key] = val
+
+        else:
+            
+            self.codebox[y][x] = val
         
     def OPend(self):
 
@@ -430,14 +455,15 @@ class Interpreter:
 
     def InvalidInstruction(self):
 
-        raise FishInvalidOperation()
+        raise FishInvalidOperation
 
-    def isQuote(self):
+    
+    def getNextInstr(self):
 
-        quote = self.codebox[self.ipY][self.ipX]
+        # int() to guard against float
+        instr = chr(int(self.codebox[self.ipY][self.ipX]))
 
-        return quote == "\"" or quote == "'"
-
+        return instr
 
     def dbgPrintStack(self):
 
@@ -445,7 +471,16 @@ class Interpreter:
 
     def dbgPrintInstr(self):
 
-        logging.debug("Instr: {0}".format(self.codebox[self.ipY][self.ipX]))
+        self.instrCount += 1
+
+        try:
+
+            logging.debug("Instr: [{0}] N: {1}".format(chr(self.codebox[self.ipY][self.ipX]),self.instrCount))
+
+        except TypeError:
+
+            logging.debug("Instr: [{0}] N: {1}".format(self.codebox[self.ipY][self.ipX],self.instrCount))
+            
 
     def run(self):
 
@@ -453,36 +488,65 @@ class Interpreter:
         while (not self.endExec):
 
 
-            element = self.codebox[self.ipY][self.ipX]
-            
-            if (self.stringQuote and element != "'") or (self.stringDbQuote and element != "\""):
+            instr = self.getNextInstr()
 
-                self.pushStack(ord(element))
+            #self.dbgPrintInstr()
+            
+            if (self.stringQuote and instr != "'") or (self.stringDbQuote and instr != "\""):
+
+                if instr == "\0":
+                    
+                    self.pushStack(ord(" "))
+
+                else:
+
+                    self.pushStack(ord(instr))         
             
             else:
 
-                #self.dbgPrintInstr()
-                nextInstruction = self.instructionTable.get(element, self.InvalidInstruction)
+                
+                nextInstruction = self.instructionTable.get(instr,self.InvalidInstruction)
                 nextInstruction()
 
             #self.dbgPrintStack()
             self.updateIP()
             
-            
-    
 
+
+class ParseInitialStack(argparse.Action):
+
+    def __call__(self,parser,namespace,values,option_string):
+
+        parsedList = []
+
+        if option_string == "-v":
+
+            parsedList = values
+
+        else:
+
+            parsedList = [ord(ch) for arg in values for ch in arg]
+
+
+        setattr(namespace,self.dest,getattr(namespace,self.dest) + parsedList)
+        
 
 
 def initArgparse():
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("script",help = "Script to execute")
-
+    parser = argparse.ArgumentParser(usage = "<script> [options]")
+    parser.add_argument("script",metavar = "<script>",help = "Script to execute")
+    
+    parser.add_argument("-v",action = ParseInitialStack,nargs = "+",type = int,default = [],metavar = "<number>",
+                        dest = "initialStack",help = "Specify initial integer values on top of the stack")
+    
+    parser.add_argument("-s",action = ParseInitialStack,nargs = "+",type = str,default = [],metavar = "<string>",
+                        dest = "initialStack",help = "Specify initial character values on top of the stack")
+    
     return parser
 
 
 def parseScript(script):
-
 
     codebox = []
 
@@ -498,7 +562,7 @@ def parseScript(script):
 
         for line in lines:
 
-            codebox.append(list(line) + [" "] * (maxLine - len(line)))
+            codebox.append([ord(ch) if ch != " " else 0 for ch in line] + [0] * (maxLine - len(line)))
 
     return codebox
 
@@ -507,14 +571,14 @@ def main():
 
     try:
 
-        logging.basicConfig(filename = "fish.log",level = logging.DEBUG, filemode = "w")
+        logging.basicConfig(filename = "fish.log",level = logging.DEBUG,filemode = "w")
         
         parser = initArgparse()
         args = parser.parse_args()
 
         codebox = parseScript(args.script)
 
-        interpreter = Interpreter(codebox)
+        interpreter = Interpreter(codebox,args.initialStack)
 
         interpreter.run()
 
@@ -528,11 +592,9 @@ def main():
 
     except FishInvalidOperation:
 
-        print("Error: Something smells fishy", file = sys.stderr)
-        logging.debug(traceback.format_exc())
-
-    finally:
-        pass
+        print("Something smells fishy", file = sys.stderr)
+        #logging.debug(traceback.format_exc())
+    
         
 
 if __name__ == "__main__":
