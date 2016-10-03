@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+
 import argparse
 import random
 import sys
 import logging
 import traceback
 
-class FishInvalidOperation(Exception):
+class FishError(Exception):
     pass
 
 class StackRegPair:
@@ -120,7 +122,7 @@ class Interpreter:
 
         except IndexError as err:
             
-            raise FishInvalidOperation from err
+            raise FishError from err
 
         return val
 
@@ -231,7 +233,7 @@ class Interpreter:
 
         except ZeroDivisionError as err:
 
-            raise FishInvalidOperation() from err
+            raise FishError from err
 
     def OPmod(self):
 
@@ -244,7 +246,7 @@ class Interpreter:
 
         except ZeroDivisionError as err:
 
-            raise FishInvalidOperation() from err
+            raise FishError from err
 
     def OPequals(self):
 
@@ -285,7 +287,7 @@ class Interpreter:
 
         except IndexError as err:
 
-            raise FishInvalidOperation() from err
+            raise FishError from err
         
 
     def OPremoveVal(self):
@@ -301,7 +303,7 @@ class Interpreter:
 
         except IndexError as err:
 
-            raise FishInvalidOperation() from err 
+            raise FishError from err 
         
     def OPswap3Val(self):
 
@@ -312,7 +314,7 @@ class Interpreter:
 
         except IndexError as err:
 
-            raise FishInvalidOperation() from err
+            raise FishError from err
         
 
     def OPshiftRight(self):
@@ -364,7 +366,7 @@ class Interpreter:
 
         if len(self.stackRegList) == 1:
             
-            raise FishInvalidOperation()
+            raise FishError
 
         toRemove = self.stackRegList[-1].stack
 
@@ -386,7 +388,7 @@ class Interpreter:
 
         except TypeError as err:
 
-            raise FishInvalidOperation from err
+            raise FishError from err
               
     def OPreadChar(self):
 
@@ -418,8 +420,8 @@ class Interpreter:
             
     def OPgetCell(self):
 
-        y = self.popStack()
-        x = self.popStack()
+        y = int(self.popStack())
+        x = int(self.popStack())
 
         if y >= self.codeboxH or x >= self.codeboxW or y < 0 or x < 0:
 
@@ -433,8 +435,8 @@ class Interpreter:
 
     def OPputCell(self):
 
-        y = self.popStack()
-        x = self.popStack()
+        y = int(self.popStack())
+        x = int(self.popStack())
         val = self.popStack()
 
         if y >= self.codeboxH or x >= self.codeboxW or y < 0 or x < 0:
@@ -453,9 +455,9 @@ class Interpreter:
     def OPnoop(self):
         pass
 
-    def InvalidInstruction(self):
+    def invalidInstruction(self):
 
-        raise FishInvalidOperation
+        raise FishError
 
     
     def getNextInstr(self):
@@ -504,14 +506,14 @@ class Interpreter:
             
             else:
 
-                
-                nextInstruction = self.instructionTable.get(instr,self.InvalidInstruction)
+                nextInstruction = self.instructionTable.get(instr,self.invalidInstruction)
                 nextInstruction()
 
             #self.dbgPrintStack()
             self.updateIP()
-            
 
+            
+            
 
 class ParseInitialStack(argparse.Action):
 
@@ -537,7 +539,7 @@ def initArgparse():
     parser = argparse.ArgumentParser(usage = "<script> [options]")
     parser.add_argument("script",metavar = "<script>",help = "Script to execute")
     
-    parser.add_argument("-v",action = ParseInitialStack,nargs = "+",type = int,default = [],metavar = "<number>",
+    parser.add_argument("-v",action = ParseInitialStack,nargs = "+",type = float,default = [],metavar = "<number>",
                         dest = "initialStack",help = "Specify initial integer values on top of the stack")
     
     parser.add_argument("-s",action = ParseInitialStack,nargs = "+",type = str,default = [],metavar = "<string>",
@@ -571,8 +573,8 @@ def main():
 
     try:
 
-        logging.basicConfig(filename = "fish.log",level = logging.DEBUG,filemode = "w")
-        
+        #logging.basicConfig(filename = "fish.log",level = logging.DEBUG,filemode = "w")
+
         parser = initArgparse()
         args = parser.parse_args()
 
@@ -590,10 +592,13 @@ def main():
         print("Error: Could not open the script: \"{0}\" ".format(err.filename)
               , file = sys.stderr)
 
-    except FishInvalidOperation:
+    except FishError:
 
         print("Something smells fishy", file = sys.stderr)
         #logging.debug(traceback.format_exc())
+
+    except KeyboardInterrupt:
+        pass
     
         
 
