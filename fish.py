@@ -193,9 +193,11 @@ class Interpreter:
 
         val = self.codebox[self.ipY][self.ipX]
 
-        if chr(val).isdigit():
+        digit = chr(val)
+
+        if digit.isdigit():
             
-            self.pushStack(int(chr(val)))
+            self.pushStack(int(digit))
 
         else:
             
@@ -356,7 +358,7 @@ class Interpreter:
          toPop = self.popStack()
          newStackReg = StackRegPair()
 
-         for val in range(toPop):
+         for val in range(int(toPop)):
              
              newStackReg.stack.append(self.popStack())
 
@@ -365,16 +367,18 @@ class Interpreter:
     def OPremStack(self):
 
         if len(self.stackRegList) == 1:
-            
-            raise FishError
 
-        toRemove = self.stackRegList[-1].stack
+            self.stackRegList[0] = StackRegPair()
 
-        for i in range(len(toRemove)):
+        else:
             
-            self.stackRegList[-2].stack.append(toRemove.pop())
+            toRemove = self.stackRegList[-1].stack
+
+            for i in range(len(toRemove)):
+
+                  self.stackRegList[-2].stack.append(toRemove.pop())
         
-        self.stackRegList.pop()
+            self.stackRegList.pop()
 
     def OPprintNum(self):
 
@@ -409,7 +413,7 @@ class Interpreter:
 
     def OPreg(self):
 
-        if self.stackRegList[-1].register == None:
+        if self.stackRegList[-1].register is None:
             
             self.stackRegList[-1].register = self.popStack()
 
@@ -477,7 +481,16 @@ class Interpreter:
 
         try:
 
-            logging.debug("Instr: [{0}] N: {1}".format(chr(self.codebox[self.ipY][self.ipX]),self.instrCount))
+            if self.codebox[self.ipY][self.ipX] == 0:
+
+                instr = " "
+
+            else:
+
+                instr = chr(self.codebox[self.ipY][self.ipX])
+                
+                
+            logging.debug("Instr: [{0}] N: {1}".format(instr,self.instrCount))
 
         except TypeError:
 
@@ -505,7 +518,7 @@ class Interpreter:
                     self.pushStack(ord(instr))         
             
             else:
-
+                
                 nextInstruction = self.instructionTable.get(instr,self.invalidInstruction)
                 nextInstruction()
 
@@ -589,7 +602,7 @@ def main():
     
     except OSError as err:
 
-        print("Error: Could not open the script: \"{0}\" ".format(err.filename)
+        print("Error: Could not open the script: \"{0}\" ".format(err)
               , file = sys.stderr)
 
     except FishError:
@@ -598,6 +611,7 @@ def main():
         #logging.debug(traceback.format_exc())
 
     except KeyboardInterrupt:
+        
         pass
     
         
